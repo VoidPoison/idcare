@@ -8,6 +8,7 @@ from gostcrypto.gostrandom import *
 from gostcrypto.gostrandom import R132356510062017
 import falcon
 import fft
+#from program_functions import *
 
 # from datetime import datetime, timedelta
 # import ipaddress
@@ -24,6 +25,146 @@ app.title("IDC")
 set_appearance_mode("dark")
 app.resizable(False, False)
 
+def get_hash(hash_filename, hash_type):
+    if hash_type == 'gost':
+       buffer_size = 128
+       hash_obj = gostcrypto.gosthash.new(cmb_hash.get())
+       with open(hash_filename, 'rb') as file:
+           buffer = file.read(buffer_size)
+           while len(buffer) > 0:
+               hash_obj.update(buffer)
+               buffer = file.read(buffer_size)
+       hash_result = hash_obj.hexdigest()
+       digest = bytearray.fromhex(hash_result)
+       return digest
+    else:
+        with open(hash_filename, 'rb') as file:
+            message = file.read()
+            return message
+
+
+def filesize(publickey_filename):
+    with open(publickey_filename, 'rb') as file:
+        publickey_all = file.read()
+        file.close()
+    return len(publickey_all)
+
+
+def keycheck(publickey_filename,key_size, keytype):
+    if keytype == 'gost':
+       with open(publickey_filename, 'rb') as file:
+        publickey_all = file.read()
+        match key_size:
+             case 1717:
+                publickey_gost_raw = publickey_all[:128]
+                publickey_gost = publickey_gost_raw
+                return publickey_gost
+
+             case 3271:
+                publickey_gost_raw = publickey_all[:128]
+                publickey_gost = publickey_gost_raw
+                return publickey_gost
+
+             case 1837:
+                publickey_gost_raw = publickey_all[:256]
+                publickey_gost = publickey_gost_raw
+                return publickey_gost
+
+             case 3391:
+                publickey_gost_raw = publickey_all[:256]
+                publickey_gost =publickey_gost_raw
+                return publickey_gost
+    else:
+        with open(publickey_filename, 'rb') as file:
+            publickey_all = file.read()
+            match key_size:
+                case 1717:
+                    publickey_falcon_raw = publickey_all[128:]
+                    publickey_falcon = publickey_falcon_raw
+                    return publickey_falcon
+
+                case 3271:
+                    publickey_falcon_raw = publickey_all[128:]
+                    publickey_falcon = publickey_falcon_raw
+                    return publickey_falcon
+
+                case 1837:
+                    publickey_falcon_raw = publickey_all[256:]
+                    publickey_falcon = publickey_falcon_raw
+                    return publickey_falcon
+
+                case 3391:
+                    publickey_falcon_raw = publickey_all[256:]
+                    publickey_falcon = publickey_falcon_raw
+                    return publickey_falcon
+
+def sign_check(signature_filename,sign_size, sign_type):
+    if sign_type == 'gost':
+      with open(signature_filename, 'rb') as file:
+        signature_all = file.read()
+        match len(signature_all):
+            case 840:
+                signature_gost_raw = signature_all[:128]
+                signature_gost = signature_gost_raw
+                print(signature_gost)
+                return signature_gost
+
+
+            case 1460:
+                signature_gost_raw = signature_all[:128]
+                signature_gost = signature_gost_raw
+                return signature_gost
+
+            case 968:
+                signature_gost_raw = signature_all[:256]
+                signature_gost = signature_gost_raw
+                return signature_gost
+
+            case 1588:
+                signature_gost_raw = signature_all[:256]
+                signature_gost = signature_gost_raw
+                return signature_gost
+    else:
+        with open(signature_filename, 'rb') as file:
+            signature_all = file.read()
+            match len(signature_all):
+                case 840:
+                    signature_falcon_raw = signature_all[128:]
+                    signature_falcon = signature_falcon_raw
+                    print(signature_falcon)
+
+                case 1460:
+                    signature_falcon_raw = signature_all[128:]
+                    signature_falcon = signature_falcon_raw
+
+                case 968:
+                    signature_falcon_raw = signature_all[256:]
+                    signature_falcon = signature_falcon_raw
+
+                case 1588:
+                    signature_falcon_raw = signature_all[256:]
+                    signature_falcon = signature_falcon_raw
+
+
+def end_sign_verify(message,hash,publickey_gost, public_key_falcon,curve_param, signature_gost, signature_falcon):
+   match len(hash):
+    case 256:
+        sign_obj = gostcrypto.gostsignature.new(gostcrypto.gostsignature.MODE_256,
+                                            gostcrypto.gostsignature.CURVES_R_1323565_1_024_2019[
+                                                curve_param])
+        if (sign_obj.verify(publickey_gost, hash, signature_gost)) and (falcon.SecretKey.verify(publickey_falcon,message,signature_falcon)):
+         return True
+        else:
+         return False
+    case 512:
+        sign_obj = gostcrypto.gostsignature.new(gostcrypto.gostsignature.MODE_512,
+                                                gostcrypto.gostsignature.CURVES_R_1323565_1_024_2019[
+                                                    curve_param])
+        if (sign_obj.verify(publickey_gost, hash, signature_gost)) and (
+        falcon.SecretKey.verify(publickey_falcon, message, signature_falcon)):
+            return True
+        else:
+            return False
 
 def new(rand_size: int, **kwargs) -> 'R132356510062017':
     rand_k = kwargs.get('rand_k', bytearray(b''))
@@ -128,127 +269,47 @@ def click_handler_2():
 
 
 
+
+
+
+
+
+
+
+
+
 def click_handler_3():
+   hash_filename = fd.askopenfilename();
+   hash = get_hash(hash_filename, 'gost')
+   print(" ")
+   print(hash)
+   message = get_hash(hash_filename, 'falcon')
+   print(message)
+   filepath_key = fd.askopenfilename();
+   key_size = filesize(filepath_key);
+   print(key_size)
+   publickey_gost = keycheck(filepath_key,key_size, 'gost')
+   print(publickey_gost)
+   publickey_falcon = keycheck(filepath_key,key_size, 'falcon')
+   print(publickey_falcon)
+   filepath_sign = fd.askopenfilename();
+   sign_size = filesize(filepath_sign);
+   print(sign_size)
+   signature_gost = sign_check(filepath_sign, sign_size, 'gost')
+   print(signature_gost)
+   signature_falcon = sign_check(filepath_sign, sign_size, 'falcon')
+   print(signature_falcon)
+   result = end_sign_verify(message, hash, publickey_gost,publickey_falcon,'id-tc26-gost-3410-2012-256-paramSetA',signature_gost,signature_falcon)
+   if result:
+       print('success')
+   else:
+       print('error')
 
-    #    Выбор файла для вычисления ХЭШа
-    hash_filename = fd.askopenfilename();
-    buffer_size = 128
-    hash_obj = gostcrypto.gosthash.new(cmb_hash.get())
-    with open(hash_filename, 'rb') as file:
-        buffer = file.read(buffer_size)
-        while len(buffer) > 0:
-            hash_obj.update(buffer)
-            buffer = file.read(buffer_size)
 
-    with open(hash_filename, 'rb') as file:
-         message = file.read()
 
-    hash_result = hash_obj.hexdigest()
-    digest = bytearray.fromhex(hash_result)
 
-    #   Выбор файла с открытым ключом
-    publickey_filename = fd.askopenfilename()
-    with open(publickey_filename, 'rt') as file:
-        publickey_all = file.read()
-        print(len(publickey_all))
-        match len(publickey_all):
-            case 1716:
-                falcon.PublicKey.__init__(publickey_all)
-                publickey_gost_raw = publickey_all[0:128]
-                print(publickey_gost_raw)
-                publickey_falcon_raw = publickey_all[128:1716]
-                print(publickey_falcon_raw)
-                publickey_gost = bytearray.fromhex(publickey_gost_raw)
-                print(publickey_gost)
-                publickey_falcon = publickey_falcon_raw
-                print(publickey_falcon)
-                signature_filename = fd.askopenfilename()
-                with open(signature_filename, 'rt') as file:
-                    signature_all = file.read()
-                    match len(signature_all):
-                        case 840:
-                            signature_gost_raw = signature_all[0:128]
-                            print(signature_gost_raw)
-                            signature_falcon_raw = signature_all[128:840]
-                            print(signature_falcon_raw)
-                            sign_obj = gostcrypto.gostsignature.new(gostcrypto.gostsignature.MODE_256,
-                                                                    gostcrypto.gostsignature.CURVES_R_1323565_1_024_2019[
-                                                                        'id-tc26-gost-3410-2012-256-paramSetA'])
-                            signature_gost = bytearray.fromhex(signature_gost_raw)
-                            print(signature_gost)
-                            signature_falcon = bytearray.fromhex(signature_falcon_raw)
-                            print(signature_falcon)
-                            if (sign_obj.verify(publickey_gost, digest, signature_gost)) and (
-                                    falcon.SecretKey.verify(publickey_falcon, message, signature_falcon)):
-                                label_3.configure(text=f"Signature is correct")
-                            else:
-                                label_3.configure(text=f"Signature is not correct")
 
-                        case 1460:
-                            signature_all = file.read()
-                            signature_gost_raw = publickey_all[:128]
-                            signature_falcon_raw = publickey_all[128:]
-                            sign_obj = gostcrypto.gostsignature.new(gostcrypto.gostsignature.MODE_256,
-                                                                    gostcrypto.gostsignature.CURVES_R_1323565_1_024_2019[
-                                                                        "streebog256"])
-                            signature_gost = bytearray.fromhex(signature_gost_raw)
-                            signature_falcon = bytearray.fromhex(signature_falcon_raw)
-                            if (sign_obj.verify(publickey_gost, digest, signature_gost)) and (
-                                    falcon.SecretKey.verify(publickey_falcon, message, signature_falcon)):
-                                label_3.configure(text=f"Signature is correct")
-                            else:
-                                label_3.configure(text=f"Signature is not correct")
 
-                        case 968:
-                            signature_all = file.read()
-                            signature_gost_raw = publickey_all[:256]
-                            signature_falcon_raw = publickey_all[256:]
-                            sign_obj = gostcrypto.gostsignature.new(gostcrypto.gostsignature.MODE_512,
-                                                                    gostcrypto.gostsignature.CURVES_R_1323565_1_024_2019[
-                                                                        "streebog512"])
-                            signature_gost = bytearray.fromhex(signature_gost_raw)
-                            signature_falcon = bytearray.fromhex(signature_falcon_raw)
-                            if (sign_obj.verify(publickey_gost, digest, signature_gost)) and (
-                                    falcon.SecretKey.verify(publickey_falcon, message, signature_falcon)):
-                                label_3.configure(text=f"Signature is correct")
-                            else:
-                                label_3.configure(text=f"Signature is not correct")
-
-                        case 1588:
-                            signature_all = file.read()
-                            signature_gost_raw = publickey_all[:256]
-                            signature_falcon_raw = publickey_all[256:]
-                            sign_obj = gostcrypto.gostsignature.new(gostcrypto.gostsignature.MODE_512,
-                                                                    gostcrypto.gostsignature.CURVES_R_1323565_1_024_2019[
-                                                                        "streebog512"])
-                            signature_gost = bytearray.fromhex(signature_gost_raw)
-                            signature_falcon = bytearray.fromhex(signature_falcon_raw)
-                            if (sign_obj.verify(publickey_gost, digest, signature_gost)) and (
-                                    falcon.SecretKey.verify()):
-                                label_3.configure(text=f"Signature is correct")
-                            else:
-                                label_3.configure(text=f"Signature is not correct")
-
-            case 3271:
-                publickey_all =file.read()
-                publickey_gost_raw = publickey_all[:128]
-                publickey_falcon_raw = publickey_all[128:]
-                publickey_gost = bytearray.fromhex(publickey_gost_raw)
-                publickey_falcon = publickey_falcon_raw
-
-            case 1837:
-                publickey_all =file.read()
-                publickey_gost_raw = publickey_all[:256]
-                publickey_falcon_raw = publickey_all[256:]
-                publickey_gost = bytearray.fromhex(publickey_gost_raw)
-                publickey_falcon = publickey_falcon_raw
-
-            case 3391:
-                publickey_all =file.read()
-                publickey_gost_raw = publickey_all[:256]
-                publickey_falcon_raw = publickey_all[256:]
-                publickey_gost = bytearray.fromhex(publickey_gost_raw)
-                publickey_falcon = publickey_falcon_raw
 
 
 
